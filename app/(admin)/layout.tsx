@@ -19,11 +19,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!profile || profile.role !== 'admin') redirect('/dashboard')
 
   const navItems = [
-    { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-    { href: '/admin/cases', label: 'All Cases', icon: FolderOpen },
-    { href: '/admin/clients', label: 'Clients', icon: Users },
+    { href: '/admin',          label: 'Overview', icon: LayoutDashboard },
+    { href: '/admin/cases',    label: 'All Cases', icon: FolderOpen },
+    { href: '/admin/clients',  label: 'Clients', icon: Users },
     { href: '/admin/messages', label: 'Messages', icon: MessageSquare },
     { href: '/admin/services', label: 'Services', icon: Settings },
+    { href: '/admin/settings', label: 'Settings', icon: Settings },
   ]
 
   return (

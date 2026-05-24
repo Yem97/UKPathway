@@ -38,6 +38,7 @@ export interface Case {
   service_id: string
   status: CaseStatus
   notes: string | null
+  details: Record<string, string> | null
   created_at: string
   updated_at: string
   profiles?: Profile

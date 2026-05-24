@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     .eq('id', data.user.id)
     .single()
 
-  const dest = profile?.role === 'admin' ? '/admin' : '/dashboard'
+  const dest = profile?.role === 'admin' ? '/admin' : '/dashboard/apply'
   console.log(`[login] ${data.user.email} → ${dest} (${pending.length} cookies)`)
 
   // Build a 303 redirect — browser will follow it as a GET
