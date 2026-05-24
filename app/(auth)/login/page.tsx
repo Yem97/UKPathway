@@ -37,7 +37,13 @@ function LoginForm() {
     })
 
     if (signInError) {
-      setError('Invalid email or password. Please try again.')
+      if (signInError.message.toLowerCase().includes('email not confirmed')) {
+        setError('Please confirm your email address before signing in. Check your inbox.')
+      } else if (signInError.message.toLowerCase().includes('invalid login')) {
+        setError('Incorrect email or password. Please try again.')
+      } else {
+        setError(signInError.message)
+      }
       return
     }
 
@@ -47,13 +53,12 @@ function LoginForm() {
       .eq('id', authData.user.id)
       .single()
 
+    router.refresh()
     if (profile?.role === 'admin') {
       router.push('/admin')
     } else {
       router.push(redirectTo)
     }
-
-    router.refresh()
   }
 
   return (
