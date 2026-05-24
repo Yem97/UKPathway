@@ -1,21 +1,40 @@
 'use client'
 
-import { Suspense, useState, useTransition } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { loginUser } from '@/app/actions/auth'
 
 function LoginForm() {
   const [error, setError] = useState('')
-  const [pending, startTransition] = useTransition()
+  const [pending, setPending] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
+    setPending(true)
+
     const formData = new FormData(e.currentTarget)
-    startTransition(async () => {
-      const result = await loginUser(formData)
-      if (result?.error) setError(result.error)
-    })
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Login failed. Please try again.')
+        setPending(false)
+        return
+      }
+
+      // Hard navigate — browser sends the cookies just set by the route handler
+      window.location.href = data.redirectTo
+    } catch {
+      setError('Something went wrong. Please try again.')
+      setPending(false)
+    }
   }
 
   const inputClass = 'w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy bg-white'
