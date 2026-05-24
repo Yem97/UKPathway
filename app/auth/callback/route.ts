@@ -4,7 +4,8 @@ import type { CookieOptions } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
+  const code    = searchParams.get('code')
+  const forFlow = searchParams.get('for') // e.g. 'password-reset', 'signup'
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
@@ -35,7 +36,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  const response = NextResponse.redirect(`${origin}/dashboard`)
+  // Route to the appropriate page after successful code exchange
+  const dest = forFlow === 'password-reset'
+    ? `${origin}/auth/update-password`
+    : `${origin}/dashboard`
+
+  const response = NextResponse.redirect(dest)
 
   // Attach session cookies and cache-control headers onto the redirect response
   for (const { name, value, options } of pending) {

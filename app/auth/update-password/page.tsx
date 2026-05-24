@@ -5,12 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
+/**
+ * Landed here after /auth/callback?for=password-reset exchanged the code.
+ * The session cookie is already set, so we can call updateUser directly.
+ */
 export default function UpdatePasswordPage() {
-  const router = useRouter()
-  const [password, setPassword]       = useState('')
-  const [confirm, setConfirm]         = useState('')
-  const [error, setError]             = useState('')
-  const [loading, setLoading]         = useState(false)
+  const router  = useRouter()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
 
   const inputClass =
     'w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy bg-white'
@@ -39,16 +43,19 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    router.push('/login?message=Password+updated+successfully')
+    router.push('/login?message=Password+updated+successfully.+Please+sign+in.')
   }
 
   return (
     <div className="min-h-screen bg-navy flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white p-10">
+        <Link href="/" className="flex flex-col mb-8">
+          <span className="font-serif text-2xl text-navy">UK Pathway</span>
+          <span className="text-[10px] tracking-[0.25em] uppercase text-navy/40">Services</span>
+        </Link>
+
         <h1 className="font-serif text-3xl text-navy mb-2">Set new password</h1>
-        <p className="text-sm text-navy/60 mb-10">
-          Choose a strong password for your account.
-        </p>
+        <p className="text-sm text-navy/60 mb-10">Choose a strong password for your account.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>

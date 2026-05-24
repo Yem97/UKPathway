@@ -20,8 +20,9 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     const supabase = createClient()
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://uk-pathway.vercel.app'
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://uk-pathway.vercel.app'}/auth/update-password`,
+      redirectTo: `${baseUrl}/auth/callback?for=password-reset`,
     })
 
     setLoading(false)
