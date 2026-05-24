@@ -1,80 +1,49 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { createClient } from '@/lib/supabase/client'
-import Input from '@/components/ui/Input'
-import Button from '@/components/ui/Button'
-
-const schema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Please enter your password'),
-})
-
-type FormData = z.infer<typeof schema>
+import { loginUser } from '@/app/actions/auth'
 
 function LoginForm() {
   const [error, setError] = useState('')
+  const [pending, startTransition] = useTransition()
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
-    resolver: zodResolver(schema),
-  })
-
-  const onSubmit = async (data: FormData) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setError('')
-    const supabase = createClient()
-
-    const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
+    const formData = new FormData(e.currentTarget)
+    startTransition(async () => {
+      const result = await loginUser(formData)
+      if (result?.error) setError(result.error)
     })
-
-    if (signInError) {
-      if (signInError.message.toLowerCase().includes('email not confirmed')) {
-        setError('Please confirm your email address before signing in. Check your inbox.')
-      } else if (signInError.message.toLowerCase().includes('invalid login')) {
-        setError('Incorrect email or password. Please try again.')
-      } else {
-        setError(signInError.message)
-      }
-      return
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', authData.user.id)
-      .single()
-
-    // Hard redirect so browser sends fresh session cookies to the server
-    if (profile?.role === 'admin') {
-      window.location.href = '/admin'
-    } else {
-      window.location.href = '/dashboard'
-    }
   }
 
+  const inputClass = 'w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy bg-white'
+  const labelClass = 'text-xs tracking-widest uppercase text-navy/50 block mb-2'
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-      <Input
-        label="Email Address"
-        type="email"
-        placeholder="john@example.com"
-        autoComplete="email"
-        error={errors.email?.message}
-        {...register('email')}
-      />
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div>
-        <Input
-          label="Password"
+        <label className={labelClass}>Email Address</label>
+        <input
+          name="email"
+          type="email"
+          placeholder="john@example.com"
+          autoComplete="email"
+          required
+          className={inputClass}
+        />
+      </div>
+
+      <div>
+        <label className={labelClass}>Password</label>
+        <input
+          name="password"
           type="password"
           placeholder="Your password"
           autoComplete="current-password"
-          error={errors.password?.message}
-          {...register('password')}
+          required
+          className={inputClass}
         />
         <div className="flex justify-end mt-2">
           <Link href="/reset-password" className="text-xs text-navy/70 hover:text-navy underline-offset-2 hover:underline">
@@ -84,12 +53,16 @@ function LoginForm() {
       </div>
 
       {error && (
-        <p className="text-sm text-red-500 bg-red-50 px-4 py-3">{error}</p>
+        <p className="text-sm text-red-600 bg-red-50 px-4 py-3">{error}</p>
       )}
 
-      <Button type="submit" loading={isSubmitting} className="w-full mt-2">
-        Sign In
-      </Button>
+      <button
+        type="submit"
+        disabled={pending}
+        className="w-full btn-primary py-3 mt-2 disabled:opacity-50"
+      >
+        {pending ? 'Signing in…' : 'Sign In'}
+      </button>
     </form>
   )
 }
