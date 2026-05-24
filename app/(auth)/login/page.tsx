@@ -4,9 +4,10 @@ import Link from 'next/link'
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: { error?: string; message?: string }
 }) {
-  const error = searchParams.error ? decodeURIComponent(searchParams.error) : null
+  const error   = searchParams.error   ? decodeURIComponent(searchParams.error)   : null
+  const message = searchParams.message ? decodeURIComponent(searchParams.message) : null
 
   const inputClass =
     'w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy bg-white'
@@ -58,6 +59,10 @@ export default function LoginPage({
             </Link>
           </div>
         </div>
+
+        {message && (
+          <p className="text-sm text-green-700 bg-green-50 px-4 py-3">{message}</p>
+        )}
 
         {error && (
           <p className="text-sm text-red-600 bg-red-50 px-4 py-3">{error}</p>
