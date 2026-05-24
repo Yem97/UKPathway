@@ -46,7 +46,7 @@ export default function SignupPage() {
           phone: data.phone,
           country: data.country,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://uk-pathway.vercel.app'}/auth/callback`,
       },
     })
 
