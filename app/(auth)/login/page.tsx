@@ -2,7 +2,6 @@
 
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,9 +17,6 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 function LoginForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
   const [error, setError] = useState('')
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -53,11 +49,11 @@ function LoginForm() {
       .eq('id', authData.user.id)
       .single()
 
-    router.refresh()
+    // Hard redirect so browser sends fresh session cookies to the server
     if (profile?.role === 'admin') {
-      router.push('/admin')
+      window.location.href = '/admin'
     } else {
-      router.push(redirectTo)
+      window.location.href = '/dashboard'
     }
   }
 
