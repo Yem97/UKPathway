@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,12 +9,38 @@ import { createClient } from '@/lib/supabase/client'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 
+// All countries — UK first, then alphabetical
+const COUNTRIES = [
+  'United Kingdom',
+  'Afghanistan', 'Albania', 'Algeria', 'Angola', 'Argentina', 'Armenia',
+  'Australia', 'Austria', 'Azerbaijan', 'Bahrain', 'Bangladesh', 'Belarus',
+  'Belgium', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil',
+  'Bulgaria', 'Cambodia', 'Cameroon', 'Canada', 'Chile', 'China', 'Colombia',
+  'Congo (DRC)', 'Costa Rica', 'Croatia', 'Cyprus', 'Czech Republic', 'Denmark',
+  'Ecuador', 'Egypt', 'El Salvador', 'Estonia', 'Ethiopia', 'Finland', 'France',
+  'Georgia', 'Germany', 'Ghana', 'Greece', 'Guatemala', 'Honduras', 'Hungary',
+  'Iceland', 'India', 'Indonesia', 'Iraq', 'Ireland', 'Israel', 'Italy',
+  'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kosovo', 'Kuwait',
+  'Kyrgyzstan', 'Latvia', 'Lebanon', 'Libya', 'Lithuania', 'Luxembourg',
+  'Malaysia', 'Mali', 'Malta', 'Mexico', 'Moldova', 'Morocco', 'Mozambique',
+  'Myanmar', 'Namibia', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua',
+  'Nigeria', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Panama',
+  'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
+  'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saudi Arabia', 'Senegal', 'Serbia',
+  'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Somalia', 'South Africa',
+  'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Sweden',
+  'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand',
+  'Tunisia', 'Turkey', 'Turkmenistan', 'Uganda', 'Ukraine', 'United Arab Emirates',
+  'United States', 'Uruguay', 'Uzbekistan', 'Venezuela', 'Vietnam', 'Yemen',
+  'Zambia', 'Zimbabwe',
+]
+
 const schema = z.object({
-  full_name: z.string().min(2, 'Please enter your full name'),
-  email: z.string().email('Please enter a valid email address'),
-  phone: z.string().min(7, 'Please enter a valid phone number'),
-  country: z.string().min(2, 'Please enter your country'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  full_name:        z.string().min(2, 'Please enter your full name'),
+  email:            z.string().email('Please enter a valid email address'),
+  phone:            z.string().min(5, 'Please enter a valid phone number'),
+  country:          z.string().min(1, 'Please select your country'),
+  password:         z.string().min(8, 'Password must be at least 8 characters'),
   confirm_password: z.string(),
 }).refine((d) => d.password === d.confirm_password, {
   message: 'Passwords do not match',
@@ -24,44 +49,46 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+const inputClass =
+  'w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy bg-white'
+const labelClass = 'text-xs tracking-widest uppercase text-navy/50 block mb-2'
+
 export default function SignupPage() {
-  const router = useRouter()
-  const [error, setError] = useState('')
+  const [error, setError]     = useState('')
   const [success, setSuccess] = useState(false)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { country: 'United Kingdom' },
   })
 
   const onSubmit = async (data: FormData) => {
     setError('')
     const supabase = createClient()
+    const baseUrl  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://uk-pathway.vercel.app'
 
     const { error: signUpError } = await supabase.auth.signUp({
-      email: data.email,
+      email:    data.email,
       password: data.password,
       options: {
         data: {
           full_name: data.full_name,
-          phone: data.phone,
-          country: data.country,
+          phone:     data.phone,
+          country:   data.country,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://uk-pathway.vercel.app'}/auth/callback`,
+        emailRedirectTo: `${baseUrl}/auth/callback`,
       },
     })
 
     if (signUpError) {
-      setError(signUpError.message)
+      if (signUpError.message.toLowerCase().includes('network')) {
+        setError('Connection failed — please check your internet and try again.')
+      } else if (signUpError.message.toLowerCase().includes('already registered')) {
+        setError('An account with this email already exists. Try signing in instead.')
+      } else {
+        setError(signUpError.message)
+      }
       return
-    }
-
-    // Update profile with phone and country
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await supabase.from('profiles').update({
-        phone: data.phone,
-        country: data.country,
-      }).eq('id', user.id)
     }
 
     setSuccess(true)
@@ -75,7 +102,7 @@ export default function SignupPage() {
         </div>
         <h2 className="font-serif text-2xl text-navy mb-3">Check your email</h2>
         <p className="text-sm text-navy/60 font-light leading-relaxed">
-          We&apos;ve sent a confirmation link to your email address. Click it to activate your account and access your portal.
+          We&apos;ve sent a confirmation link to your email address. Click it to activate your account.
         </p>
       </div>
     )
@@ -98,6 +125,7 @@ export default function SignupPage() {
           error={errors.full_name?.message}
           {...register('full_name')}
         />
+
         <Input
           label="Email Address"
           type="email"
@@ -105,7 +133,9 @@ export default function SignupPage() {
           error={errors.email?.message}
           {...register('email')}
         />
-        <div className="grid grid-cols-2 gap-4">
+
+        {/* Phone + Country side by side */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Phone Number"
             type="tel"
@@ -113,13 +143,24 @@ export default function SignupPage() {
             error={errors.phone?.message}
             {...register('phone')}
           />
-          <Input
-            label="Country"
-            placeholder="Nigeria"
-            error={errors.country?.message}
-            {...register('country')}
-          />
+
+          {/* Country dropdown */}
+          <div>
+            <label className={labelClass}>Country</label>
+            <select
+              {...register('country')}
+              className={`${inputClass} appearance-none cursor-pointer`}
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            {errors.country && (
+              <p className="text-xs text-red-500 mt-1">{errors.country.message}</p>
+            )}
+          </div>
         </div>
+
         <Input
           label="Password"
           type="password"
@@ -127,6 +168,7 @@ export default function SignupPage() {
           error={errors.password?.message}
           {...register('password')}
         />
+
         <Input
           label="Confirm Password"
           type="password"
@@ -145,7 +187,7 @@ export default function SignupPage() {
 
         <p className="text-xs text-navy/70 text-center leading-relaxed">
           By creating an account you agree to our{' '}
-          <Link href="/terms" className="text-navy underline underline-offset-2">Terms</Link> and{' '}
+          <Link href="/terms" className="text-navy underline underline-offset-2">Terms</Link>{' '}and{' '}
           <Link href="/privacy" className="text-navy underline underline-offset-2">Privacy Policy</Link>.
         </p>
       </form>

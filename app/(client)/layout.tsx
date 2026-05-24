@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { LayoutDashboard, Plus, FolderOpen, User, LogOut, Menu } from 'lucide-react'
+import { LayoutDashboard, Plus, FolderOpen, User, LogOut } from 'lucide-react'
+import { MobileNav } from '@/components/client/MobileNav'
 
 export default async function ClientLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -67,12 +68,11 @@ export default async function ClientLayout({ children }: { children: React.React
 
       {/* Main content */}
       <main className="flex-1 md:ml-60">
-        {/* Mobile header */}
-        <div className="md:hidden bg-navy px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="font-serif text-white text-lg">UK Pathway</Link>
-          <button className="text-white p-1"><Menu size={20} /></button>
-        </div>
-        <div className="p-6 md:p-10">
+        {/* Mobile nav (sticky top bar + bottom tabs + slide-out drawer) */}
+        <MobileNav fullName={profile?.full_name ?? ''} email={user.email ?? ''} />
+
+        {/* Extra bottom padding on mobile so content clears the tab bar */}
+        <div className="p-4 pb-24 md:p-10 md:pb-10">
           {children}
         </div>
       </main>

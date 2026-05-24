@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LayoutDashboard, FolderOpen, Users, MessageSquare, Settings, LogOut, ShieldCheck } from 'lucide-react'
+import { AdminMobileNav } from '@/components/admin/AdminMobileNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -73,7 +74,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </aside>
 
       <main className="flex-1 md:ml-60">
-        <div className="p-6 md:p-10">
+        <AdminMobileNav fullName={profile.full_name ?? ''} email={user.email ?? ''} />
+        <div className="p-4 pb-24 md:p-10 md:pb-10">
           {children}
         </div>
       </main>
