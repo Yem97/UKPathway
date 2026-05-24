@@ -15,8 +15,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Collect every Set-Cookie Supabase wants to write
+  // Collect every Set-Cookie and response header Supabase wants to write
   const pending: { name: string; value: string; options: CookieOptions }[] = []
+  const pendingHeaders: Record<string, string> = {}
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,8 +25,10 @@ export async function POST(request: NextRequest) {
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: (list: { name: string; value: string; options: CookieOptions }[]) =>
-          list.forEach((c) => pending.push(c)),
+        setAll(list, headers) {
+          list.forEach((c) => pending.push(c))
+          if (headers) Object.assign(pendingHeaders, headers)
+        },
       },
     }
   )
@@ -57,9 +60,14 @@ export async function POST(request: NextRequest) {
   // Build a 303 redirect — browser will follow it as a GET
   const response = NextResponse.redirect(new URL(dest, origin), { status: 303 })
 
-  // Attach every Supabase session cookie directly onto the redirect response
+  // Attach every Supabase session cookie onto the redirect response
   for (const { name, value, options } of pending) {
     response.cookies.set(name, value, options)
+  }
+
+  // Attach any cache-control headers Supabase wants us to set
+  for (const [key, value] of Object.entries(pendingHeaders)) {
+    response.headers.set(key, value)
   }
 
   return response

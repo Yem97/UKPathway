@@ -12,8 +12,8 @@
   "dependencies": {
     "@hookform/resolvers": "^3.6.0",
     "@react-email/components": "^0.0.19",
-    "@supabase/ssr": "^0.3.0",
-    "@supabase/supabase-js": "^2.44.4",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.106.1",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.8",
     "lucide-react": "^0.395.0",

@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import type { CookieOptions } from '@supabase/ssr'
 
 /**
  * Middleware runs on the Edge runtime.
@@ -19,12 +18,18 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
+        setAll(cookiesToSet, responseHeaders) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options ?? {})
           )
+          // Forward cache-control and other anti-caching headers
+          if (responseHeaders) {
+            Object.entries(responseHeaders).forEach(([key, value]) =>
+              supabaseResponse.headers.set(key, value)
+            )
+          }
         },
       },
     }
