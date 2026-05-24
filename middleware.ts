@@ -1,6 +1,13 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import type { CookieOptions } from '@supabase/ssr'
 
+/**
+ * Middleware runs on the Edge runtime.
+ * Its ONLY job here is to keep Supabase session cookies fresh.
+ * Auth checks (role, access) are handled by the individual layouts
+ * which run on the Node.js runtime and can reliably call getUser().
+ */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -23,39 +30,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user ?? null
-  const { pathname } = request.nextUrl
-
-  // Redirect unauthenticated users away from protected routes
-  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/admin'))) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(url)
-  }
-
-  // Redirect authenticated users away from auth pages
-  if (user && (pathname === '/login' || pathname === '/signup')) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
-  // Admin-only route protection
-  if (user && pathname.startsWith('/admin')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || profile.role !== 'admin') {
-      const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
-    }
-  }
+  // Refresh session tokens if needed — must not be removed
+  await supabase.auth.getUser()
 
   return supabaseResponse
 }

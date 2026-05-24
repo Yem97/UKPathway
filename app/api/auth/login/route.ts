@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import type { CookieOptions } from '@supabase/ssr'
 
 export async function POST(request: NextRequest) {
+  const origin = request.nextUrl.origin
   const formData = await request.formData()
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+  const email    = (formData.get('email')    as string | null)?.trim() ?? ''
+  const password = (formData.get('password') as string | null) ?? ''
 
   if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password are required.' }, { status: 400 })
+    return NextResponse.redirect(
+      new URL('/login?error=Email+and+password+are+required', origin),
+      { status: 303 }
+    )
   }
 
-  // Collect all cookies Supabase wants to set
-  const cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[] = []
+  // Collect every Set-Cookie Supabase wants to write
+  const pending: { name: string; value: string; options: CookieOptions }[] = []
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookies: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          cookiesToSet.push(...cookies)
-        },
+        getAll: () => request.cookies.getAll(),
+        setAll: (list: { name: string; value: string; options: CookieOptions }[]) =>
+          list.forEach((c) => pending.push(c)),
       },
     }
   )
@@ -36,7 +38,11 @@ export async function POST(request: NextRequest) {
       : error.message.toLowerCase().includes('invalid login')
       ? 'Incorrect email or password.'
       : error.message
-    return NextResponse.json({ error: msg }, { status: 401 })
+    console.error('[login] signInWithPassword error:', error.message)
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(msg)}`, origin),
+      { status: 303 }
+    )
   }
 
   const { data: profile } = await supabase
@@ -45,15 +51,16 @@ export async function POST(request: NextRequest) {
     .eq('id', data.user.id)
     .single()
 
-  const redirectTo = profile?.role === 'admin' ? '/admin' : '/dashboard'
+  const dest = profile?.role === 'admin' ? '/admin' : '/dashboard'
+  console.log(`[login] ${data.user.email} → ${dest} (${pending.length} cookies)`)
 
-  // Return JSON with redirectTo — client will do window.location.href
-  const response = NextResponse.json({ redirectTo })
+  // Build a 303 redirect — browser will follow it as a GET
+  const response = NextResponse.redirect(new URL(dest, origin), { status: 303 })
 
-  // Explicitly attach every Supabase session cookie to the response
-  cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, (options as Parameters<typeof response.cookies.set>[2]) ?? {})
-  })
+  // Attach every Supabase session cookie directly onto the redirect response
+  for (const { name, value, options } of pending) {
+    response.cookies.set(name, value, options)
+  }
 
   return response
 }
