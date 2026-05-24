@@ -66,14 +66,6 @@ export const SERVICE_QUESTIONS: Record<string, ServiceQuestion[]> = {
       required: true,
     },
     {
-      id: 'uk_address',
-      label: 'Current UK address',
-      type: 'textarea',
-      placeholder: 'House number, street name, city, postcode',
-      required: true,
-      helpText: 'Must match the address on your DVLA application.',
-    },
-    {
       id: 'urgency',
       label: 'How urgently do you need this conversion?',
       type: 'radio',

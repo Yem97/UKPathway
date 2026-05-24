@@ -10,12 +10,13 @@ export interface SubmitApplicationPayload {
   serviceId:      string
   // Step 1 — personal details
   personal: {
-    full_name:   string
-    date_of_birth: string
-    nationality: string
-    phone:       string
-    uk_address:  string
-    visa_status: string
+    full_name:            string
+    date_of_birth:        string
+    nationality:          string
+    phone:                string
+    country_of_residence: string
+    current_address:      string
+    visa_status:          string
   }
   // Step 2 — service-specific answers
   serviceAnswers: Record<string, string>
