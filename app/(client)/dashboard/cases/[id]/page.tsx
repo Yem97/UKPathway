@@ -9,7 +9,7 @@ import type { CasePaymentDetails } from '@/app/actions/admin'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { STATUS_LABELS } from '@/types'
 import type { CaseStatus } from '@/types'
-import { Clock, FileText, MessageSquare, CheckCircle } from 'lucide-react'
+import { Clock, FileText, MessageSquare, CheckCircle, Download } from 'lucide-react'
 
 export default async function ClientCaseDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -30,7 +30,8 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
 
   const [
     { data: messages },
-    { data: documents },
+    { data: myDocuments },
+    { data: adminDocuments },
     { data: timeline },
   ] = await Promise.all([
     adminRead
@@ -39,12 +40,21 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
       .eq('case_id', params.id)
       .eq('is_internal', false)
       .order('created_at', { ascending: true }),
-    supabase
+    // Client's own submitted documents
+    adminRead
       .from('case_documents')
       .select('*')
       .eq('case_id', params.id)
+      .eq('is_admin_sent', false)
       .order('created_at', { ascending: false }),
-    supabase
+    // Documents sent FROM admin TO client
+    adminRead
+      .from('case_documents')
+      .select('*')
+      .eq('case_id', params.id)
+      .eq('is_admin_sent', true)
+      .order('created_at', { ascending: false }),
+    adminRead
       .from('case_timeline')
       .select('*')
       .eq('case_id', params.id)
@@ -172,6 +182,39 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
             />
           )}
 
+          {/* ── Documents from UK Pathway ── */}
+          {!!adminDocuments?.length && (
+            <div className="bg-green-50 border border-green-300 p-6">
+              <h2 className="font-serif text-xl text-green-900 mb-1 flex items-center gap-2">
+                <Download size={18} className="text-green-700" /> Your Documents
+              </h2>
+              <p className="text-xs text-green-700 mb-4 leading-relaxed">
+                Your documents are ready. Click to download each one.
+              </p>
+              <div className="flex flex-col gap-2">
+                {adminDocuments.map((doc) => (
+                  <a
+                    key={doc.id}
+                    href={doc.file_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between bg-white border border-green-200 px-4 py-3 hover:border-green-400 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText size={16} className="text-green-600 shrink-0" />
+                      <span className="text-sm text-navy font-medium truncate">
+                        {doc.label || doc.file_name || 'Document'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-green-700 group-hover:text-green-900 ml-3 shrink-0 flex items-center gap-1 transition-colors">
+                      <Download size={12} /> Download
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Messages ── */}
           <div className="bg-white border border-navy/10 p-6">
             <h2 className="font-serif text-lg text-navy mb-4 flex items-center gap-2">
@@ -269,13 +312,13 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
           </div>
 
           {/* Documents */}
-          {!!documents?.length && (
+          {!!myDocuments?.length && (
             <div className="bg-white border border-navy/10 p-6">
               <h2 className="font-serif text-lg text-navy mb-3 flex items-center gap-2">
-                <FileText size={16} /> Documents
+                <FileText size={16} /> My Submitted Files
               </h2>
               <div className="flex flex-col gap-2">
-                {documents.map((doc) => (
+                {myDocuments.map((doc) => (
                   <div key={doc.id} className="flex items-center justify-between border border-navy/5 px-3 py-2">
                     <p className="text-xs text-navy truncate">{doc.label || doc.file_name || 'File'}</p>
                     <a

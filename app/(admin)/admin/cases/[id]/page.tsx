@@ -9,6 +9,7 @@ import { PaymentPanel } from '@/components/admin/PaymentPanel'
 import { PaymentConfirmPanel } from '@/components/admin/PaymentConfirmPanel'
 import { FinalPaymentPanel } from '@/components/admin/FinalPaymentPanel'
 import { FinalPaymentConfirmPanel } from '@/components/admin/FinalPaymentConfirmPanel'
+import { DocumentSender } from '@/components/admin/DocumentSender'
 import { NotesEditor } from '@/components/admin/NotesEditor'
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
 import type { CaseStatus } from '@/types'
@@ -35,17 +36,26 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
   // (session-client RLS only returns messages the admin authored)
   const admin = createAdminClient()
 
-  const [{ data: messages }, { data: documents }, { data: timeline }, { data: payments }] =
+  const [{ data: messages }, { data: documents }, { data: sentDocuments }, { data: timeline }, { data: payments }] =
     await Promise.all([
       admin
         .from('case_messages')
         .select('*, profiles(full_name)')
         .eq('case_id', params.id)
         .order('created_at', { ascending: true }),
-      supabase
+      // Client-uploaded documents (application submissions)
+      admin
         .from('case_documents')
         .select('*')
         .eq('case_id', params.id)
+        .eq('is_admin_sent', false)
+        .order('created_at', { ascending: false }),
+      // Documents sent TO the client by admin
+      admin
+        .from('case_documents')
+        .select('*')
+        .eq('case_id', params.id)
+        .eq('is_admin_sent', true)
         .order('created_at', { ascending: false }),
       supabase
         .from('case_timeline')
@@ -192,6 +202,12 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
               <p className="text-sm text-navy/40">No documents uploaded yet.</p>
             )}
           </div>
+
+          {/* Send documents to client */}
+          <DocumentSender
+            caseId={params.id}
+            sentDocuments={sentDocuments ?? []}
+          />
 
           {/* Internal notes */}
           <div className="bg-white border border-navy/10 p-6">
