@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { StatusBadge } from '@/components/ui/Badge'
 import { ClientMessageComposer } from '@/components/client/ClientMessageComposer'
 import { PaymentProofUploader } from '@/components/client/PaymentProofUploader'
@@ -23,12 +23,16 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
 
   if (!caseData) notFound()
 
+  // Use admin client for messages so admin replies are visible
+  // (session-client RLS only returns messages the client authored)
+  const adminRead = createAdminClient()
+
   const [
     { data: messages },
     { data: documents },
     { data: timeline },
   ] = await Promise.all([
-    supabase
+    adminRead
       .from('case_messages')
       .select('*, profiles(full_name)')
       .eq('case_id', params.id)

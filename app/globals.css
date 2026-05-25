@@ -38,6 +38,7 @@
 
   p {
     @apply text-navy;
+    color: inherit; /* allow parent containers like message bubbles to set their own colour */
   }
 
   ::selection {

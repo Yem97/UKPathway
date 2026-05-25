@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { StatusBadge } from '@/components/ui/Badge'
 import { StatusUpdater } from '@/components/admin/StatusUpdater'
 import { StatusActionButton } from '@/components/admin/StatusActionButton'
@@ -29,9 +29,13 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
 
   const { data: { user: adminUser } } = await supabase.auth.getUser()
 
+  // Use admin client for messages so client replies are visible
+  // (session-client RLS only returns messages the admin authored)
+  const admin = createAdminClient()
+
   const [{ data: messages }, { data: documents }, { data: timeline }, { data: payments }] =
     await Promise.all([
-      supabase
+      admin
         .from('case_messages')
         .select('*, profiles(full_name)')
         .eq('case_id', params.id)
