@@ -246,7 +246,21 @@ export function ApplicationWizard({ service, profile, userId }: Props) {
       }
       await submitApplication(payload)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
+      // Next.js redirect() works by throwing a special NEXT_REDIRECT error internally.
+      // If we catch and swallow it the navigation never happens and the spinner loops.
+      // Re-throw it so the router can handle the redirect correctly.
+      if (
+        err !== null &&
+        typeof err === 'object' &&
+        'digest' in err &&
+        String((err as { digest: unknown }).digest).startsWith('NEXT_REDIRECT')
+      ) {
+        throw err
+      }
+
+      const msg = err instanceof Error
+        ? err.message
+        : 'Something went wrong. Please try again.'
       setSubmitError(msg)
       setSubmitting(false)
     }
