@@ -23,7 +23,7 @@ export function ClientMessageComposer({ caseId }: { caseId: string }) {
         onChange={(e) => setMessage(e.target.value)}
         rows={3}
         placeholder="Write a message to your case manager…"
-        className="w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy resize-none"
+        className="w-full border border-navy/20 px-4 py-3 bg-white text-navy text-sm focus:outline-none focus:border-navy resize-none"
       />
       <button
         onClick={handleSend}

@@ -12,6 +12,15 @@
     box-sizing: border-box;
   }
 
+  /* Prevent OS dark-mode from overriding form element backgrounds/text.
+     Without this, browsers apply a dark background to inputs/textareas in
+     dark mode, making navy text invisible until highlighted. */
+  input, textarea, select {
+    color-scheme: light;
+    background-color: #ffffff;
+    color: #0a1a3a;
+  }
+
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
