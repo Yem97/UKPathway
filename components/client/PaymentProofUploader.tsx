@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { submitPaymentProof } from '@/app/actions/client'
 import { Upload, CheckCircle, Loader2, AlertCircle, CreditCard, Image as ImageIcon } from 'lucide-react'
@@ -29,7 +29,6 @@ export function PaymentProofUploader({ caseId, caseNumber, userId, paymentDetail
   const [preview,   setPreview]   = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadErr, setUploadErr] = useState('')
-  const [pending,   startTransition] = useTransition()
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
@@ -60,22 +59,33 @@ export function PaymentProofUploader({ caseId, caseNumber, userId, paymentDetail
         .from('case-documents')
         .upload(path, file, { upsert: false })
 
-      if (error) throw new Error(error.message)
+      if (error) throw new Error(`Storage error: ${error.message}`)
 
       const { data: { publicUrl } } = supabase.storage
         .from('case-documents')
         .getPublicUrl(data.path)
 
-      startTransition(async () => {
-        await submitPaymentProof(caseId, publicUrl)
-      })
+      // Call directly (not inside startTransition) so errors propagate
+      // to the catch block instead of crashing the page
+      await submitPaymentProof(caseId, publicUrl)
+
     } catch (err: unknown) {
-      setUploadErr(err instanceof Error ? err.message : 'Upload failed. Please try again.')
+      // Re-throw Next.js redirect so navigation works after success
+      if (
+        err !== null &&
+        typeof err === 'object' &&
+        'digest' in err &&
+        String((err as { digest: unknown }).digest).startsWith('NEXT_REDIRECT')
+      ) {
+        throw err
+      }
+      const msg = err instanceof Error ? err.message : 'Upload failed. Please try again.'
+      setUploadErr(msg)
       setUploading(false)
     }
   }
 
-  const busy = uploading || pending
+  const busy = uploading
 
   return (
     <div className="bg-amber-50 border border-amber-300 flex flex-col gap-0">
