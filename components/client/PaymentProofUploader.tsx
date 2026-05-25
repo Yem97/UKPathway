@@ -1,8 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { submitPaymentProof } from '@/app/actions/client'
+import { useRouter } from 'next/navigation'
 import { Upload, CheckCircle, Loader2, AlertCircle, CreditCard, Image as ImageIcon } from 'lucide-react'
 
 interface PaymentDetails {
@@ -23,6 +22,7 @@ interface Props {
 }
 
 export function PaymentProofUploader({ caseId, caseNumber, userId, paymentDetails }: Props) {
+  const router  = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [file,      setFile]      = useState<File | null>(null)
@@ -51,34 +51,20 @@ export function PaymentProofUploader({ caseId, caseNumber, userId, paymentDetail
     setUploadErr('')
 
     try {
-      const supabase = createClient()
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const path     = `${userId}/payment_${Date.now()}_${safeName}`
+      const body = new FormData()
+      body.append('file',   file)
+      body.append('caseId', caseId)
 
-      const { data, error } = await supabase.storage
-        .from('case-documents')
-        .upload(path, file, { upsert: false })
+      const res  = await fetch('/api/upload-payment-proof', { method: 'POST', body })
+      const json = await res.json() as { error?: string; success?: boolean }
 
-      if (error) throw new Error(`Storage error: ${error.message}`)
+      if (!res.ok) throw new Error(json.error ?? 'Upload failed. Please try again.')
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('case-documents')
-        .getPublicUrl(data.path)
-
-      // Call directly (not inside startTransition) so errors propagate
-      // to the catch block instead of crashing the page
-      await submitPaymentProof(caseId, publicUrl)
+      // Success — refresh the server component so the page shows the teal
+      // "payment received" banner instead of this uploader
+      router.refresh()
 
     } catch (err: unknown) {
-      // Re-throw Next.js redirect so navigation works after success
-      if (
-        err !== null &&
-        typeof err === 'object' &&
-        'digest' in err &&
-        String((err as { digest: unknown }).digest).startsWith('NEXT_REDIRECT')
-      ) {
-        throw err
-      }
       const msg = err instanceof Error ? err.message : 'Upload failed. Please try again.'
       setUploadErr(msg)
       setUploading(false)
