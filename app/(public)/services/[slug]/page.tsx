@@ -118,7 +118,9 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
                 <Clock size={12} /> {service.timeline}
               </span>
               {service.price > 0 && (
-                <span className="text-xs text-white/40">From £{service.price}</span>
+                <span className="text-xs text-white/40">
+                  From £{service.price} · 50% deposit upfront
+                </span>
               )}
             </div>
           </FadeUp>
@@ -158,8 +160,29 @@ export default async function ServiceDetailPage({ params }: { params: { slug: st
                 <div className="bg-navy p-6">
                   {service.price > 0 && (
                     <>
-                      <p className="font-serif text-xl text-white mb-2">£{service.price}</p>
-                      <p className="text-xs text-white/40 mb-6">Consultancy fee · Government fees separate</p>
+                      {/* Total fee */}
+                      <p className="font-serif text-3xl text-white mb-1">
+                        £{service.price}
+                      </p>
+                      <p className="text-xs text-white/40 mb-5">
+                        Total consultancy fee · Government fees separate
+                      </p>
+
+                      {/* Payment split */}
+                      <div className="border border-white/10 mb-5">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                          <span className="text-xs text-white/60">Deposit due upfront</span>
+                          <span className="text-sm font-medium text-white">
+                            £{(service.price / 2).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <span className="text-xs text-white/60">Remainder on completion</span>
+                          <span className="text-sm font-medium text-white">
+                            £{(service.price / 2).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
                     </>
                   )}
                   <Link
