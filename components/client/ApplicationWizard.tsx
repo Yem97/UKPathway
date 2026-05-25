@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { submitApplication, type SubmitApplicationPayload } from '@/app/actions/client'
 import { getServiceQuestions } from '@/lib/service-questions'
@@ -126,6 +126,9 @@ export function ApplicationWizard({ service, profile, userId }: Props) {
   const [notes, setNotes]               = useState('')
   const [submitting, setSubmitting]     = useState(false)
   const [submitError, setSubmitError]   = useState('')
+
+  // Ref for the optional "extra document" file input (mobile Safari needs this)
+  const extraFileRef = useRef<HTMLInputElement>(null)
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -574,20 +577,26 @@ export function ApplicationWizard({ service, profile, userId }: Props) {
             <p className="text-xs tracking-widest uppercase text-navy/40 mb-3">
               Additional documents (optional)
             </p>
-            <label className="flex items-center gap-3 px-4 py-3 border border-dashed border-navy/25 text-navy/50 hover:border-navy/60 hover:text-navy cursor-pointer transition-all text-sm">
+            {/* button + ref pattern — avoids mobile Safari sr-only tap issue */}
+            <button
+              type="button"
+              onClick={() => extraFileRef.current?.click()}
+              className="w-full flex items-center gap-3 px-4 py-3 border border-dashed border-navy/25 text-navy/50 hover:border-navy/60 hover:text-navy transition-all text-sm active:scale-[0.99]"
+            >
               <Upload size={16} />
               Upload any other supporting document
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) handleFileSelect(file, 'Additional document', uploads.length)
-                  e.target.value = ''
-                }}
-              />
-            </label>
+            </button>
+            <input
+              ref={extraFileRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleFileSelect(file, 'Additional document', uploads.length)
+                e.target.value = ''
+              }}
+            />
           </div>
         </div>
       )}
@@ -742,6 +751,9 @@ function DocumentSlot({
   onSelect:  (file: File) => void
   onRemove:  () => void
 }) {
+  // useRef per slot — avoids mobile Safari sr-only tap issue
+  const fileRef = useRef<HTMLInputElement>(null)
+
   const isUploading = uploaded?.uploading
   const isUploaded  = !!uploaded?.url
   const hasError    = !!uploaded?.error
@@ -780,20 +792,28 @@ function DocumentSlot({
             <X size={20} />
           </button>
         ) : (
-          <label className="shrink-0 flex items-center gap-1.5 px-4 py-2 border border-navy/20 text-navy text-xs font-medium hover:bg-navy hover:text-white active:scale-[0.97] transition-all cursor-pointer">
-            <Upload size={14} />
-            {hasError ? 'Retry' : 'Upload'}
+          <>
+            {/* button triggers the hidden input — works on mobile Safari */}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 border border-navy/20 text-navy text-xs font-medium hover:bg-navy hover:text-white active:scale-[0.97] transition-all"
+            >
+              <Upload size={14} />
+              {hasError ? 'Retry' : 'Upload'}
+            </button>
             <input
+              ref={fileRef}
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
-              className="sr-only"
+              className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) onSelect(file)
                 e.target.value = ''
               }}
             />
-          </label>
+          </>
         )}
       </div>
     </div>
