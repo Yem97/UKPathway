@@ -7,6 +7,8 @@ export type CaseStatus =
   | 'awaiting_payment'
   | 'payment_submitted'
   | 'processing'
+  | 'awaiting_final_payment'
+  | 'final_payment_submitted'
   | 'completed'
   | 'rejected'
 
@@ -42,6 +44,8 @@ export interface Case {
   details: Record<string, string> | null
   payment_proof_url: string | null
   payment_details: Record<string, string | number> | null
+  final_payment_details: Record<string, string | number> | null
+  final_payment_proof_url: string | null
   created_at: string
   updated_at: string
   profiles?: Profile
@@ -91,23 +95,27 @@ export interface Payment {
 }
 
 export const STATUS_LABELS: Record<CaseStatus, string> = {
-  submitted:           'Submitted',
-  under_review:        'Under Review',
-  documents_requested: 'Documents Requested',
-  awaiting_payment:    'Payment Details Sent',
-  payment_submitted:   'Deposit Completed',
-  processing:          'Processing',
-  completed:           'Completed',
-  rejected:            'Rejected',
+  submitted:               'Submitted',
+  under_review:            'Under Review',
+  documents_requested:     'Documents Requested',
+  awaiting_payment:        'Payment Details Sent',
+  payment_submitted:       'Deposit Completed',
+  processing:              'Processing',
+  awaiting_final_payment:  'Final Payment Due',
+  final_payment_submitted: 'Final Payment Sent',
+  completed:               'Completed',
+  rejected:                'Rejected',
 }
 
 export const STATUS_COLORS: Record<CaseStatus, string> = {
-  submitted:           'bg-blue-100 text-blue-800',
-  under_review:        'bg-yellow-100 text-yellow-800',
-  documents_requested: 'bg-orange-100 text-orange-800',
-  awaiting_payment:    'bg-purple-100 text-purple-800',
-  payment_submitted:   'bg-teal-100 text-teal-800',
-  processing:          'bg-indigo-100 text-indigo-800',
-  completed:           'bg-green-100 text-green-800',
-  rejected:            'bg-red-100 text-red-800',
+  submitted:               'bg-blue-100 text-blue-800',
+  under_review:            'bg-yellow-100 text-yellow-800',
+  documents_requested:     'bg-orange-100 text-orange-800',
+  awaiting_payment:        'bg-purple-100 text-purple-800',
+  payment_submitted:       'bg-teal-100 text-teal-800',
+  processing:              'bg-indigo-100 text-indigo-800',
+  awaiting_final_payment:  'bg-purple-100 text-purple-800',
+  final_payment_submitted: 'bg-teal-100 text-teal-800',
+  completed:               'bg-green-100 text-green-800',
+  rejected:                'bg-red-100 text-red-800',
 }

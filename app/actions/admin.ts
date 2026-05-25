@@ -189,6 +189,109 @@ export async function rejectPaymentProof(caseId: string) {
   revalidatePath('/dashboard')
 }
 
+// ─── Final payment details ────────────────────────────────────────────────────
+
+export async function saveFinalPaymentDetails(caseId: string, details: CasePaymentDetails) {
+  const adminId = await requireAdmin()
+  const admin   = createAdminClient()
+
+  const { error } = await admin
+    .from('cases')
+    .update({
+      final_payment_details: details,
+      status:                'awaiting_final_payment',
+      updated_at:            new Date().toISOString(),
+    })
+    .eq('id', caseId)
+
+  if (error) throw new Error(error.message)
+
+  await admin.from('case_timeline').insert({
+    case_id:           caseId,
+    event_type:        'awaiting_final_payment',
+    event_description: 'Final payment request sent — please complete payment to receive your documents',
+    created_by:        adminId,
+  })
+
+  revalidatePath(`/admin/cases/${caseId}`)
+  revalidatePath(`/dashboard/cases/${caseId}`)
+  revalidatePath('/dashboard')
+}
+
+// ─── Confirm final payment ────────────────────────────────────────────────────
+
+export async function confirmFinalPayment(caseId: string) {
+  const adminId = await requireAdmin()
+  const admin   = createAdminClient()
+
+  const { data: caseRow, error: fetchErr } = await admin
+    .from('cases')
+    .select('user_id, final_payment_details')
+    .eq('id', caseId)
+    .single()
+
+  if (fetchErr || !caseRow) throw new Error('Case not found')
+
+  const amount = (caseRow.final_payment_details as CasePaymentDetails | null)?.amount ?? 0
+
+  await admin.from('payments').insert({
+    case_id:        caseId,
+    user_id:        caseRow.user_id,
+    amount,
+    currency:       'GBP',
+    status:         'paid',
+    payment_method: 'bank_transfer',
+    reference:      'Final payment confirmed via screenshot',
+  })
+
+  const { error: updateErr } = await admin
+    .from('cases')
+    .update({ status: 'completed', updated_at: new Date().toISOString() })
+    .eq('id', caseId)
+
+  if (updateErr) throw new Error(updateErr.message)
+
+  await admin.from('case_timeline').insert({
+    case_id:           caseId,
+    event_type:        'completed',
+    event_description: 'Final payment confirmed — case completed. Your documents will be sent shortly.',
+    created_by:        adminId,
+  })
+
+  revalidatePath(`/admin/cases/${caseId}`)
+  revalidatePath(`/dashboard/cases/${caseId}`)
+  revalidatePath('/dashboard')
+}
+
+// ─── Reject final payment proof ───────────────────────────────────────────────
+
+export async function rejectFinalPaymentProof(caseId: string) {
+  const adminId = await requireAdmin()
+  const admin   = createAdminClient()
+
+  const { error } = await admin
+    .from('cases')
+    .update({
+      final_payment_proof_url: null,
+      status:                  'awaiting_final_payment',
+      updated_at:              new Date().toISOString(),
+    })
+    .eq('id', caseId)
+
+  if (error) throw new Error(error.message)
+
+  await admin.from('case_timeline').insert({
+    case_id:           caseId,
+    event_type:        'final_payment_rejected',
+    event_description: 'Final payment proof could not be verified — please upload a clearer screenshot',
+    created_by:        adminId,
+  })
+
+  revalidatePath(`/admin/cases/${caseId}`)
+  revalidatePath(`/dashboard/cases/${caseId}`)
+  revalidatePath('/dashboard')
+}
+
 // ─── Mark case paid (manual, legacy) ─────────────────────────────────────────
 
 export async function markCasePaid(caseId: string, amount: number, reference: string) {

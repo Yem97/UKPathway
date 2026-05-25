@@ -11,10 +11,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    // ── 2. Parse form data ─────────────────────────────────────────────────
+    // ── 2. Parse form data + mode ──────────────────────────────────────────
     const formData = await req.formData()
     const file     = formData.get('file')   as File   | null
     const caseId   = formData.get('caseId') as string | null
+    // mode=final  → final payment proof
+    // mode=initial (default) → deposit proof
+    const isFinal  = (formData.get('mode') as string | null) === 'final'
 
     if (!file)   return NextResponse.json({ error: 'No file provided' },   { status: 400 })
     if (!caseId) return NextResponse.json({ error: 'No case ID provided' }, { status: 400 })
@@ -34,8 +37,9 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 4. Upload file via admin client (bypasses storage RLS) ─────────────
+    const prefix   = isFinal ? 'final_payment' : 'payment'
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path     = `${user.id}/payment_${Date.now()}_${safeName}`
+    const path     = `${user.id}/${prefix}_${Date.now()}_${safeName}`
     const bytes    = await file.arrayBuffer()
 
     const { data: uploadData, error: uploadErr } = await admin.storage
@@ -54,13 +58,13 @@ export async function POST(req: NextRequest) {
       .getPublicUrl(uploadData.path)
 
     // ── 5. Update case record ──────────────────────────────────────────────
+    const updatePayload = isFinal
+      ? { final_payment_proof_url: publicUrl, status: 'final_payment_submitted' }
+      : { payment_proof_url: publicUrl,       status: 'payment_submitted'       }
+
     const { error: updateErr } = await admin
       .from('cases')
-      .update({
-        payment_proof_url: publicUrl,
-        status:            'payment_submitted',
-        updated_at:        new Date().toISOString(),
-      })
+      .update({ ...updatePayload, updated_at: new Date().toISOString() })
       .eq('id', caseId)
 
     if (updateErr) {
@@ -73,9 +77,11 @@ export async function POST(req: NextRequest) {
     // ── 6. Timeline event ──────────────────────────────────────────────────
     await admin.from('case_timeline').insert({
       case_id:           caseId,
-      event_type:        'payment_submitted',
-      event_description: 'Payment proof uploaded — awaiting admin confirmation',
-      created_by:        user.id,
+      event_type:        isFinal ? 'final_payment_submitted' : 'payment_submitted',
+      event_description: isFinal
+        ? 'Final payment proof uploaded — awaiting admin confirmation'
+        : 'Payment proof uploaded — awaiting admin confirmation',
+      created_by: user.id,
     })
 
     // ── 7. Revalidate cached pages ─────────────────────────────────────────

@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { StatusBadge } from '@/components/ui/Badge'
 import { ClientMessageComposer } from '@/components/client/ClientMessageComposer'
 import { PaymentProofUploader } from '@/components/client/PaymentProofUploader'
+import { FinalPaymentUploader } from '@/components/client/FinalPaymentUploader'
 import type { CasePaymentDetails } from '@/app/actions/admin'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { STATUS_LABELS } from '@/types'
@@ -59,7 +60,10 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
 
   const statusOrder: CaseStatus[] = [
     'submitted', 'under_review', 'documents_requested',
-    'awaiting_payment', 'payment_submitted', 'processing', 'completed',
+    'awaiting_payment', 'payment_submitted',
+    'processing',
+    'awaiting_final_payment', 'final_payment_submitted',
+    'completed',
   ]
   const currentIdx = statusOrder.indexOf(caseData.status as CaseStatus)
 
@@ -118,15 +122,29 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
         </div>
       )}
 
-      {/* ── Payment proof submitted — awaiting confirmation ── */}
+      {/* ── Deposit proof submitted — awaiting confirmation ── */}
       {caseData.status === 'payment_submitted' && (
         <div className="bg-teal-50 border border-teal-300 px-5 py-4 mb-6 flex items-start gap-3">
           <CheckCircle size={20} className="text-teal-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-teal-900 mb-1">Payment proof received</p>
+            <p className="text-sm font-semibold text-teal-900 mb-1">Deposit proof received</p>
             <p className="text-xs text-teal-700 leading-relaxed">
-              Our team is reviewing your payment screenshot. You will be notified once it
+              Our team is reviewing your deposit screenshot. You will be notified once it
               is confirmed — usually within a few hours. No further action needed.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Final payment proof submitted — awaiting confirmation ── */}
+      {caseData.status === 'final_payment_submitted' && (
+        <div className="bg-indigo-50 border border-indigo-300 px-5 py-4 mb-6 flex items-start gap-3">
+          <CheckCircle size={20} className="text-indigo-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-indigo-900 mb-1">Final payment proof received</p>
+            <p className="text-xs text-indigo-700 leading-relaxed">
+              Our team is reviewing your final payment screenshot. Once confirmed, your
+              documents will be sent to you. No further action needed.
             </p>
           </div>
         </div>
@@ -135,13 +153,22 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 flex flex-col gap-6">
 
-          {/* ── Payment uploader (awaiting_payment only) ── */}
+          {/* ── Deposit uploader (awaiting_payment only) ── */}
           {caseData.status === 'awaiting_payment' && (
             <PaymentProofUploader
               caseId={params.id}
               caseNumber={caseData.case_number}
               userId={user!.id}
               paymentDetails={paymentDetails}
+            />
+          )}
+
+          {/* ── Final payment uploader (awaiting_final_payment only) ── */}
+          {caseData.status === 'awaiting_final_payment' && caseData.final_payment_details && (
+            <FinalPaymentUploader
+              caseId={params.id}
+              caseNumber={caseData.case_number}
+              finalPaymentDetails={caseData.final_payment_details as CasePaymentDetails}
             />
           )}
 

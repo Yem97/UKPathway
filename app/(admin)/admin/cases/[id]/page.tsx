@@ -7,6 +7,8 @@ import { StatusActionButton } from '@/components/admin/StatusActionButton'
 import { MessageComposer } from '@/components/admin/MessageComposer'
 import { PaymentPanel } from '@/components/admin/PaymentPanel'
 import { PaymentConfirmPanel } from '@/components/admin/PaymentConfirmPanel'
+import { FinalPaymentPanel } from '@/components/admin/FinalPaymentPanel'
+import { FinalPaymentConfirmPanel } from '@/components/admin/FinalPaymentConfirmPanel'
 import { NotesEditor } from '@/components/admin/NotesEditor'
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
 import type { CaseStatus } from '@/types'
@@ -276,7 +278,27 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
             </div>
           </div>
 
-          {/* Payment proof confirmation */}
+          {/* Final payment proof confirmation */}
+          {caseData.status === 'final_payment_submitted' && caseData.final_payment_proof_url && (
+            <FinalPaymentConfirmPanel
+              caseId={params.id}
+              proofUrl={caseData.final_payment_proof_url}
+              clientName={client?.full_name || 'Client'}
+            />
+          )}
+
+          {/* Final payment panel — shown when processing is done */}
+          {(caseData.status === 'processing' ||
+            caseData.status === 'awaiting_final_payment' ||
+            caseData.final_payment_details) && (
+            <FinalPaymentPanel
+              caseId={params.id}
+              servicePrice={service?.price ?? null}
+              savedDetails={caseData.final_payment_details as import('@/app/actions/admin').CasePaymentDetails | null}
+            />
+          )}
+
+          {/* Deposit proof confirmation */}
           {caseData.status === 'payment_submitted' && caseData.payment_proof_url && (
             <PaymentConfirmPanel
               caseId={params.id}
@@ -286,7 +308,7 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
             />
           )}
 
-          {/* Payment details form — shown when awaiting payment */}
+          {/* Deposit details form — shown when awaiting payment */}
           {(caseData.status === 'awaiting_payment' || caseData.payment_details) && (
             <PaymentPanel
               caseId={params.id}
