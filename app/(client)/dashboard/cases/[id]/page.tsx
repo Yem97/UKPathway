@@ -3,10 +3,11 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { StatusBadge } from '@/components/ui/Badge'
 import { ClientMessageComposer } from '@/components/client/ClientMessageComposer'
+import { PaymentProofUploader } from '@/components/client/PaymentProofUploader'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { STATUS_LABELS } from '@/types'
 import type { CaseStatus } from '@/types'
-import { Clock, FileText, MessageSquare } from 'lucide-react'
+import { Clock, FileText, MessageSquare, CheckCircle } from 'lucide-react'
 
 export default async function ClientCaseDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -21,7 +22,12 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
 
   if (!caseData) notFound()
 
-  const [{ data: messages }, { data: documents }, { data: timeline }] = await Promise.all([
+  const [
+    { data: messages },
+    { data: documents },
+    { data: timeline },
+    { data: bankSettings },
+  ] = await Promise.all([
     supabase
       .from('case_messages')
       .select('*, profiles(full_name)')
@@ -38,18 +44,25 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
       .select('*')
       .eq('case_id', params.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'bank_details')
+      .single(),
   ])
 
   const service = caseData.services as {
-    name?: string
-    timeline?: string
-    required_documents?: string[]
-    price?: number
+    name?: string; timeline?: string; required_documents?: string[]; price?: number
+  } | null
+
+  const bank = bankSettings?.value as {
+    account_name: string; bank_name: string; sort_code: string
+    account_number: string; additional_info: string
   } | null
 
   const statusOrder: CaseStatus[] = [
     'submitted', 'under_review', 'documents_requested',
-    'awaiting_payment', 'processing', 'completed',
+    'awaiting_payment', 'payment_submitted', 'processing', 'completed',
   ]
   const currentIdx = statusOrder.indexOf(caseData.status as CaseStatus)
 
@@ -69,22 +82,22 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
         </div>
       </div>
 
-      {/* Progress tracker */}
+      {/* ── Progress tracker ── */}
       {caseData.status !== 'rejected' && (
         <div className="bg-white border border-navy/10 p-6 mb-6">
           <h2 className="font-serif text-lg text-navy mb-5">Application Progress</h2>
-          <div className="flex items-center gap-0 overflow-x-auto">
+          <div className="flex items-center gap-0 overflow-x-auto pb-1">
             {statusOrder.map((s, i) => {
-              const done = i < currentIdx
-              const active = i === currentIdx
+              const done    = i < currentIdx
+              const active  = i === currentIdx
               return (
                 <div key={s} className="flex items-center flex-1 min-w-0">
                   <div className="flex flex-col items-center flex-1 min-w-0">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                        done ? 'bg-navy text-white' : active ? 'bg-navy text-white ring-4 ring-navy/20' : 'bg-navy/10 text-navy/40'
-                      }`}
-                    >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                      done   ? 'bg-navy text-white'
+                      : active ? 'bg-navy text-white ring-4 ring-navy/20'
+                      : 'bg-navy/10 text-navy/40'
+                    }`}>
                       {done ? '✓' : i + 1}
                     </div>
                     <p className={`text-[10px] tracking-wider uppercase mt-2 text-center leading-tight ${active ? 'text-navy font-medium' : 'text-navy/40'}`}>
@@ -108,10 +121,35 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
         </div>
       )}
 
+      {/* ── Payment proof submitted — awaiting confirmation ── */}
+      {caseData.status === 'payment_submitted' && (
+        <div className="bg-teal-50 border border-teal-300 px-5 py-4 mb-6 flex items-start gap-3">
+          <CheckCircle size={20} className="text-teal-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-teal-900 mb-1">Payment proof received</p>
+            <p className="text-xs text-teal-700 leading-relaxed">
+              Our team is reviewing your payment screenshot. You will be notified once it
+              is confirmed — usually within a few hours. No further action needed.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 flex flex-col gap-6">
 
-          {/* Messages */}
+          {/* ── Payment uploader (awaiting_payment only) ── */}
+          {caseData.status === 'awaiting_payment' && (
+            <PaymentProofUploader
+              caseId={params.id}
+              caseNumber={caseData.case_number}
+              userId={user!.id}
+              bank={bank}
+              servicePrice={service?.price ?? null}
+            />
+          )}
+
+          {/* ── Messages ── */}
           <div className="bg-white border border-navy/10 p-6">
             <h2 className="font-serif text-lg text-navy mb-4 flex items-center gap-2">
               <MessageSquare size={16} /> Messages
@@ -145,7 +183,7 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
             <ClientMessageComposer caseId={params.id} />
           </div>
 
-          {/* Timeline */}
+          {/* ── Activity timeline ── */}
           {!!timeline?.length && (
             <div className="bg-white border border-navy/10 p-6">
               <h2 className="font-serif text-lg text-navy mb-5 flex items-center gap-2">
@@ -169,7 +207,7 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* ── Sidebar ── */}
         <div className="flex flex-col gap-5">
 
           {/* Case info */}
@@ -190,6 +228,12 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
                   <p className="text-navy">{service.timeline}</p>
                 </div>
               )}
+              {service?.price && (
+                <div>
+                  <p className="text-xs text-navy/50 uppercase tracking-wider mb-0.5">Service Fee</p>
+                  <p className="text-navy font-medium">£{service.price.toFixed(2)}</p>
+                </div>
+              )}
               <div>
                 <p className="text-xs text-navy/50 uppercase tracking-wider mb-0.5">Submitted</p>
                 <p className="text-navy">{formatDate(caseData.created_at)}</p>
@@ -201,39 +245,7 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
             </div>
           </div>
 
-          {/* Awaiting payment notice */}
-          {caseData.status === 'awaiting_payment' && service?.price && (
-            <div className="bg-navy text-white p-6">
-              <p className="font-serif text-lg mb-1">Payment Required</p>
-              <p className="font-serif text-2xl mb-3">£{service.price.toFixed(2)}</p>
-              <p className="text-xs text-white/60 mb-4 leading-relaxed">
-                Please arrange a bank transfer and contact us with your payment reference.
-              </p>
-              <a
-                href="mailto:admin@ukpathwayservices.com?subject=Payment Reference - Case {caseData.case_number}"
-                className="block w-full text-center bg-white text-navy text-xs tracking-widest uppercase py-2.5 hover:bg-white/90 transition-colors"
-              >
-                Send Payment Reference
-              </a>
-            </div>
-          )}
-
-          {/* Documents requested notice */}
-          {caseData.status === 'documents_requested' && service?.required_documents?.length && (
-            <div className="bg-white border border-orange-200 p-6">
-              <p className="font-serif text-lg text-navy mb-3">Documents Required</p>
-              <ul className="flex flex-col gap-1">
-                {service.required_documents.map((doc) => (
-                  <li key={doc} className="text-xs text-navy flex items-start gap-2">
-                    <span className="text-orange-500 mt-0.5">•</span> {doc}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-navy/50 mt-4">Please email your documents to admin@ukpathwayservices.com with your case number.</p>
-            </div>
-          )}
-
-          {/* Uploaded documents */}
+          {/* Documents */}
           {!!documents?.length && (
             <div className="bg-white border border-navy/10 p-6">
               <h2 className="font-serif text-lg text-navy mb-3 flex items-center gap-2">
@@ -254,6 +266,23 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Documents requested notice */}
+          {caseData.status === 'documents_requested' && service?.required_documents?.length && (
+            <div className="bg-white border border-orange-200 p-6">
+              <p className="font-serif text-lg text-navy mb-3">Documents Required</p>
+              <ul className="flex flex-col gap-1">
+                {service.required_documents.map((doc) => (
+                  <li key={doc} className="text-xs text-navy flex items-start gap-2">
+                    <span className="text-orange-500 mt-0.5">•</span> {doc}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-navy/50 mt-4">
+                Please send your documents via the message box or email us with your case number.
+              </p>
             </div>
           )}
 

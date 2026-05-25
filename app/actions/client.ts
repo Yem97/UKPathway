@@ -88,6 +88,36 @@ export async function submitApplication(payload: SubmitApplicationPayload) {
   redirect(`/dashboard/cases/${caseRow.id}?submitted=1`)
 }
 
+// ─── Payment Proof ────────────────────────────────────────────────────────────
+
+export async function submitPaymentProof(caseId: string, proofUrl: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { error } = await supabase
+    .from('cases')
+    .update({
+      payment_proof_url: proofUrl,
+      status:            'payment_submitted',
+      updated_at:        new Date().toISOString(),
+    })
+    .eq('id', caseId)
+    .eq('user_id', user.id)
+
+  if (error) throw new Error(error.message)
+
+  await supabase.from('case_timeline').insert({
+    case_id:           caseId,
+    event_type:        'payment_submitted',
+    event_description: 'Payment proof uploaded — awaiting admin confirmation',
+    created_by:        user.id,
+  })
+
+  revalidatePath(`/dashboard/cases/${caseId}`)
+  revalidatePath('/dashboard')
+}
+
 // ─── Messages ─────────────────────────────────────────────────────────────────
 
 export async function sendClientMessage(caseId: string, message: string) {

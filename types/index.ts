@@ -5,6 +5,7 @@ export type CaseStatus =
   | 'under_review'
   | 'documents_requested'
   | 'awaiting_payment'
+  | 'payment_submitted'
   | 'processing'
   | 'completed'
   | 'rejected'
@@ -39,6 +40,7 @@ export interface Case {
   status: CaseStatus
   notes: string | null
   details: Record<string, string> | null
+  payment_proof_url: string | null
   created_at: string
   updated_at: string
   profiles?: Profile
@@ -88,21 +90,23 @@ export interface Payment {
 }
 
 export const STATUS_LABELS: Record<CaseStatus, string> = {
-  submitted: 'Submitted',
-  under_review: 'Under Review',
+  submitted:           'Submitted',
+  under_review:        'Under Review',
   documents_requested: 'Documents Requested',
-  awaiting_payment: 'Awaiting Payment',
-  processing: 'Processing',
-  completed: 'Completed',
-  rejected: 'Rejected',
+  awaiting_payment:    'Awaiting Payment',
+  payment_submitted:   'Payment Submitted',
+  processing:          'Processing',
+  completed:           'Completed',
+  rejected:            'Rejected',
 }
 
 export const STATUS_COLORS: Record<CaseStatus, string> = {
-  submitted: 'bg-blue-100 text-blue-800',
-  under_review: 'bg-yellow-100 text-yellow-800',
+  submitted:           'bg-blue-100 text-blue-800',
+  under_review:        'bg-yellow-100 text-yellow-800',
   documents_requested: 'bg-orange-100 text-orange-800',
-  awaiting_payment: 'bg-purple-100 text-purple-800',
-  processing: 'bg-indigo-100 text-indigo-800',
-  completed: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
+  awaiting_payment:    'bg-purple-100 text-purple-800',
+  payment_submitted:   'bg-teal-100 text-teal-800',
+  processing:          'bg-indigo-100 text-indigo-800',
+  completed:           'bg-green-100 text-green-800',
+  rejected:            'bg-red-100 text-red-800',
 }

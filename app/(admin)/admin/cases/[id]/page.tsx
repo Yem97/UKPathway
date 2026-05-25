@@ -6,6 +6,7 @@ import { StatusUpdater } from '@/components/admin/StatusUpdater'
 import { StatusActionButton } from '@/components/admin/StatusActionButton'
 import { MessageComposer } from '@/components/admin/MessageComposer'
 import { PaymentPanel } from '@/components/admin/PaymentPanel'
+import { PaymentConfirmPanel } from '@/components/admin/PaymentConfirmPanel'
 import { NotesEditor } from '@/components/admin/NotesEditor'
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
 import type { CaseStatus } from '@/types'
@@ -267,7 +268,17 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
             </div>
           </div>
 
-          {/* Payment */}
+          {/* Payment proof confirmation */}
+          {caseData.status === 'payment_submitted' && caseData.payment_proof_url && (
+            <PaymentConfirmPanel
+              caseId={params.id}
+              proofUrl={caseData.payment_proof_url}
+              clientName={client?.full_name || 'Client'}
+              servicePrice={service?.price ?? null}
+            />
+          )}
+
+          {/* Manual payment panel */}
           <PaymentPanel caseId={params.id} isPaid={isPaid} />
 
           {/* Payment history */}
@@ -293,6 +304,7 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
               <StatusActionButton caseId={params.id} status="under_review" label="→ Move to Under Review" />
               <StatusActionButton caseId={params.id} status="documents_requested" label="→ Request Documents" />
               <StatusActionButton caseId={params.id} status="awaiting_payment" label="→ Request Payment" />
+              <StatusActionButton caseId={params.id} status="payment_submitted" label="→ Mark Payment Submitted" />
               <StatusActionButton caseId={params.id} status="processing" label="→ Mark as Processing" />
               <StatusActionButton caseId={params.id} status="completed" label="✓ Mark Completed" />
             </div>

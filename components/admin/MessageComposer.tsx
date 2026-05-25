@@ -24,7 +24,7 @@ export function MessageComposer({ caseId }: { caseId: string }) {
         onChange={(e) => setMessage(e.target.value)}
         rows={4}
         placeholder={isInternal ? 'Internal note (not visible to client)…' : 'Type your message to the client…'}
-        className="w-full border border-navy/20 px-4 py-3 text-navy text-sm focus:outline-none focus:border-navy resize-none"
+        className="w-full border border-navy/20 px-4 py-3 bg-white text-navy text-sm focus:outline-none focus:border-navy resize-none"
       />
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 text-xs text-navy/60 cursor-pointer">
