@@ -41,6 +41,7 @@ export interface Case {
   notes: string | null
   details: Record<string, string> | null
   payment_proof_url: string | null
+  payment_details: Record<string, string | number> | null
   created_at: string
   updated_at: string
   profiles?: Profile

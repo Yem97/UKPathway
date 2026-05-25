@@ -27,6 +27,8 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
 
   if (!caseData) notFound()
 
+  const { data: { user: adminUser } } = await supabase.auth.getUser()
+
   const [{ data: messages }, { data: documents }, { data: timeline }, { data: payments }] =
     await Promise.all([
       supabase
@@ -122,24 +124,26 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
             {messages?.length ? (
               <div className="flex flex-col gap-3 mb-4 max-h-96 overflow-y-auto pr-1">
                 {messages.map((msg) => {
-                  const authorName = (msg.profiles as { full_name?: string })?.full_name || 'Unknown'
-                  const isAdminMsg = msg.author_id !== client?.id
+                  const authorName  = (msg.profiles as { full_name?: string })?.full_name || 'Unknown'
+                  // Use admin user ID for reliable detection — avoids null client?.id issue
+                  const isMine      = msg.author_id === adminUser?.id
+                  const isInternal  = msg.is_internal
+
                   return (
-                    <div
-                      key={msg.id}
-                      className={`p-3 text-sm ${
-                        msg.is_internal
+                    <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] p-3 text-sm rounded-sm ${
+                        isInternal
                           ? 'bg-yellow-50 border border-yellow-200 text-navy/70 italic'
-                          : isAdminMsg
-                          ? 'bg-navy text-white self-end ml-8'
-                          : 'bg-navy/5 text-navy mr-8'
-                      }`}
-                    >
-                      <p className="leading-relaxed">{msg.message}</p>
-                      <p className={`text-xs mt-1 ${isAdminMsg && !msg.is_internal ? 'text-white/60' : 'text-navy/50'}`}>
-                        {authorName} · {formatDateTime(msg.created_at)}
-                        {msg.is_internal && ' · Internal'}
-                      </p>
+                          : isMine
+                          ? 'bg-navy text-white'
+                          : 'bg-navy/[0.06] text-navy'
+                      }`}>
+                        <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                        <p className={`text-xs mt-1.5 ${isMine && !isInternal ? 'text-white/60' : 'text-navy/50'}`}>
+                          {isMine ? 'You' : authorName} · {formatDateTime(msg.created_at)}
+                          {isInternal && ' · Internal note'}
+                        </p>
+                      </div>
                     </div>
                   )
                 })}
@@ -278,8 +282,15 @@ export default async function AdminCaseDetailPage({ params }: { params: { id: st
             />
           )}
 
-          {/* Manual payment panel */}
-          <PaymentPanel caseId={params.id} isPaid={isPaid} />
+          {/* Payment details form — shown when awaiting payment */}
+          {(caseData.status === 'awaiting_payment' || caseData.payment_details) && (
+            <PaymentPanel
+              caseId={params.id}
+              status={caseData.status}
+              servicePrice={service?.price ?? null}
+              savedDetails={caseData.payment_details as import('@/app/actions/admin').CasePaymentDetails | null}
+            />
+          )}
 
           {/* Payment history */}
           {!!payments?.length && (

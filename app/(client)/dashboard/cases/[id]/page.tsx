@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { StatusBadge } from '@/components/ui/Badge'
 import { ClientMessageComposer } from '@/components/client/ClientMessageComposer'
 import { PaymentProofUploader } from '@/components/client/PaymentProofUploader'
+import type { CasePaymentDetails } from '@/app/actions/admin'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { STATUS_LABELS } from '@/types'
 import type { CaseStatus } from '@/types'
@@ -26,7 +27,6 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
     { data: messages },
     { data: documents },
     { data: timeline },
-    { data: bankSettings },
   ] = await Promise.all([
     supabase
       .from('case_messages')
@@ -44,21 +44,14 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
       .select('*')
       .eq('case_id', params.id)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('settings')
-      .select('value')
-      .eq('key', 'bank_details')
-      .single(),
   ])
 
   const service = caseData.services as {
     name?: string; timeline?: string; required_documents?: string[]; price?: number
   } | null
 
-  const bank = bankSettings?.value as {
-    account_name: string; bank_name: string; sort_code: string
-    account_number: string; additional_info: string
-  } | null
+  // Per-case payment details set by admin (preferred over global settings)
+  const paymentDetails = caseData.payment_details as CasePaymentDetails | null
 
   const statusOrder: CaseStatus[] = [
     'submitted', 'under_review', 'documents_requested',
@@ -144,8 +137,7 @@ export default async function ClientCaseDetailPage({ params }: { params: { id: s
               caseId={params.id}
               caseNumber={caseData.case_number}
               userId={user!.id}
-              bank={bank}
-              servicePrice={service?.price ?? null}
+              paymentDetails={paymentDetails}
             />
           )}
 

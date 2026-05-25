@@ -42,6 +42,30 @@ export async function saveCaseNotes(caseId: string, notes: string) {
   revalidatePath(`/admin/cases/${caseId}`)
 }
 
+export interface CasePaymentDetails {
+  amount:         number
+  account_name:   string
+  bank_name:      string
+  sort_code:      string
+  account_number: string
+  payment_method: string
+  instructions:   string
+}
+
+export async function savePaymentDetails(caseId: string, details: CasePaymentDetails) {
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('cases')
+    .update({ payment_details: details })
+    .eq('id', caseId)
+
+  if (error) throw new Error(error.message)
+  revalidatePath(`/admin/cases/${caseId}`)
+  revalidatePath(`/dashboard/cases/${caseId}`)
+  revalidatePath('/dashboard')
+}
+
 export async function confirmPayment(caseId: string) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
