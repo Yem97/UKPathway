@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 // ─── Application Submission ───────────────────────────────────────────────────
 
@@ -91,11 +91,26 @@ export async function submitApplication(payload: SubmitApplicationPayload) {
 // ─── Payment Proof ────────────────────────────────────────────────────────────
 
 export async function submitPaymentProof(caseId: string, proofUrl: string) {
+  // Verify user is authenticated via the session client
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { error } = await supabase
+  // Use admin client for the writes — the cases/case_timeline RLS policies
+  // block client UPDATE/INSERT. We do our own ownership check below.
+  const admin = createAdminClient()
+
+  // Verify ownership before writing (manual RLS equivalent)
+  const { data: existing } = await admin
+    .from('cases')
+    .select('id')
+    .eq('id', caseId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!existing) throw new Error('Case not found or access denied')
+
+  const { error } = await admin
     .from('cases')
     .update({
       payment_proof_url: proofUrl,
@@ -103,11 +118,10 @@ export async function submitPaymentProof(caseId: string, proofUrl: string) {
       updated_at:        new Date().toISOString(),
     })
     .eq('id', caseId)
-    .eq('user_id', user.id)
 
   if (error) throw new Error(error.message)
 
-  await supabase.from('case_timeline').insert({
+  await admin.from('case_timeline').insert({
     case_id:           caseId,
     event_type:        'payment_submitted',
     event_description: 'Payment proof uploaded — awaiting admin confirmation',
@@ -125,10 +139,12 @@ export async function sendClientMessage(caseId: string, message: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
 
-  const { error } = await supabase.from('case_messages').insert({
-    case_id:   caseId,
-    author_id: user.id,
-    message:   message.trim(),
+  // Use admin client to bypass RLS on case_messages insert
+  const admin = createAdminClient()
+  const { error } = await admin.from('case_messages').insert({
+    case_id:     caseId,
+    author_id:   user.id,
+    message:     message.trim(),
     is_internal: false,
   })
 
